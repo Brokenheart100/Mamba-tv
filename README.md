@@ -82,7 +82,9 @@ flutter drive --driver=test_driver/integration_test.dart `
   -AndroidSdk D:\Software\ASSDK -JavaHome D:\Software\AS\jbr -BuildApk -ProbeLive
 ```
 
-Debug APK 默认输出到 `build/app/outputs/flutter-apk/app-debug.apk`。脚本的 `-BuildApk` 会额外复制到 `artifacts/mamba-tv-debug.apk`，方便安装。Debug / 模板签名产物用于开发验证；正式发布签名尚未配置。
+Debug APK 默认输出到 `build/app/outputs/flutter-apk/app-debug.apk`。脚本的 `-BuildApk` 会额外复制到 `artifacts/mamba-tv-debug.apk`，方便安装。Debug 产物用于开发验证。
+
+GitHub 自动发布已配置：推送与 `pubspec.yaml` 版本一致的 `v*` 标签后，自动检查、使用 Secrets 正式签名、构建三种架构的 Release APK 并发布到 GitHub Releases。首次需要填写四个签名 Secrets，具体步骤见 [发布说明](docs/releasing.md)。Release 缺少密钥会失败，不再使用 Debug 签名。
 
 生成代码已经保存在项目内。变更领域模型、API DTO 或数据库表之后执行：
 

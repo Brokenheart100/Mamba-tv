@@ -2,6 +2,15 @@
 
 本文件区分源码实现、自动化测试、真实目录接口、Android 构建、模拟器和电视实机结果。
 
+## GitHub Actions Release 配置（2026-10-17，Asia/Shanghai）
+
+- 新增 `v*` 标签触发的 Android Release 工作流，固定 Flutter 3.47.5 / JDK 17，校验标签与应用版本、签名 Secrets，检查后构建三种 ABI 的 APK，验签、计算 SHA256、保存构建附件并通过 GitHub CLI 发布。`-rc.1` 等标签标为 Pre-release。
+- Gradle Release 使用环境变量或本机被忽略的 `android/key.properties`，不再使用 Debug 密钥；无签名配置时，实际执行 `:app:preReleaseBuild` 按预期失败。Debug 不需要正式签名。日志：`artifacts/release-missing-signing.log`。
+- `actionlint 1.7.12` 检查通过；实际执行工作流内的版本校验代码，`v0.1.0` 通过、`v9.9.9` 被拒绝。`tools/check.ps1` 通过锁文件校验、静态检查、51 项测试和本地 MacCMS 协议探针；日志：`artifacts/actions-check.log`。
+- 本机使用独立生成、有效期 1 天的临时验证密钥，通过同名环境变量构建 Release APK：armeabi-v7a 33827910 字节、arm64-v8a 36779256 字节、x86_64 41737155 字节。三个 APK 均通过 `apksigner verify`，证书 SHA256 都与临时密钥导出证书相同。密钥已删除；这些 APK 仅用于本地构建验证，不是用户正式签名的发布包。日志：`artifacts/release-smoke-build.log` / `release-smoke-verification.log`。
+- 构建发现 Flutter 3.47.5 的 `--no-pub` 会跳过平台插件注册文件重建，导致 Release 引用开发依赖 `integration_test` 而编译失败。最终工作流使用默认 Pub / 平台生成步骤，成功排除开发插件，且构建前后 `pubspec.lock` 无变化。没有编辑生成文件或将测试插件移入正式依赖。
+- 尚未配置用户的 GitHub Secrets，未提交 / 推送代码或标签，未在线执行 Actions、创建 GitHub Release，未使用用户正式密钥。本机验证使用 Windows / JDK 25，不能代替 Ubuntu / JDK 17 上的首次 Actions 运行结果。本轮未操作模拟器或电视。
+
 ## 修正为 Animeko 同源订阅（2026-10-17，Asia/Shanghai）
 
 - 原 MacCMS 首版偏离“沿用 Animeko 数据源”的要求。本次默认改为 Animeko README 指向的 creamycake ani-subs 在线订阅，直接保留并使用上游规则，不把站点替换为 MacCMS。MacCMS 旧配置保留为可选扩展；Talker 保留。

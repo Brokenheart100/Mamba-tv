@@ -1,8 +1,23 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// CI supplies environment variables; local builds may use ignored android/key.properties.
+val releaseKeys = Properties().apply {
+    val propertiesFile = rootProject.file("key.properties")
+    if (propertiesFile.exists()) propertiesFile.inputStream().use { load(it) }
+}
+fun releaseKey(environmentName: String, propertyName: String): String? =
+    providers.environmentVariable(environmentName).orNull ?: releaseKeys.getProperty(propertyName)
+
+val releaseStoreFile = releaseKey("ANDROID_KEYSTORE_PATH", "storeFile")
+val releaseStorePassword = releaseKey("ANDROID_KEYSTORE_PASSWORD", "storePassword")
+val releaseKeyAlias = releaseKey("ANDROID_KEY_ALIAS", "keyAlias")
+val releaseKeyPassword = releaseKey("ANDROID_KEY_PASSWORD", "keyPassword")
 
 android {
     namespace = "app.mamba.mamba_tv"
@@ -29,11 +44,27 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = releaseStoreFile?.let { file(it) }
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    doFirst {
+        if (listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+                .any { it.isNullOrBlank() }) {
+            throw GradleException("Release signing is required. Configure Android signing secrets or android/key.properties; see docs/releasing.md.")
         }
     }
 }
