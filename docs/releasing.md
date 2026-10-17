@@ -4,6 +4,8 @@
 
 CI 固定 Flutter 3.47.5（Dart 3.13.4）、Temurin JDK 17、Ubuntu 24.04、Android API 36 / Build Tools 36.0.0 / NDK 28.2.13676358。Actions 引用固定提交，依赖使用已提交的 `pubspec.lock`。Release 打包保留默认的 Pub / 平台生成步骤，以排除 `integration_test` 等开发插件，不使用 `--no-pub`；打包后检查锁文件没有改变。升级 Flutter 后需同步核对这些组件。
 
+Android 工具使用现成的 [android-actions/setup-android](https://github.com/android-actions/setup-android) 显式安装，固定 Command-line Tools 16.0（12266719），由该 Action 配置 `ANDROID_HOME` / `ANDROID_SDK_ROOT`、PATH 和 SDK 许可，随后验证 `sdkmanager` 及同一 SDK 目录中的 `apksigner`。不依赖托管 runner 镜像预先提供这些工具或 PATH。
+
 ## 一次性配置签名
 
 如果已有该应用的正式密钥，请继续使用，不要重新生成。首次发布可在自己的 PowerShell 中执行以下命令（路径按本机 Android Studio 安装位置调整）：
@@ -61,6 +63,22 @@ CI 固定 Flutter 3.47.5（Dart 3.13.4）、Temurin JDK 17、Ubuntu 24.04、Andr
 发布会自动生成更新说明。`version: 0.1.0-rc.1+1` 对应 `v0.1.0-rc.1`，包含 `-` 的版本会标为 Pre-release。版本校验、测试、签名或构建任一步失败都不会进入发布步骤；APK 也会保留在 Actions 的构建附件中 14 天。
 
 同一标签运行中的任务会排队，不会互相取消。发布步骤使用 `gh release create --verify-tag`，不覆盖已有 Release；成功发布后不要重用或移动这个标签，修复请用新版本。若上传中断留下草稿，可在 Releases 检查并删除未发布草稿，再重跑失败任务；若已经公开发布则使用新版本。
+
+## 首次运行 sdkmanager 不存在的修复
+
+`v0.1.0` 的首次运行在 SDK 安装步骤报 `sdkmanager: command not found`，发生在编译和密钥恢复之前。原因是工作流没有显式初始化 Android Command-line Tools。修复已接入上面的 setup-android Action，签名 Secrets 不需要因此重新生成。
+
+修复后的版本为 `0.1.1+2`。提交并推送修复后，创建新标签来执行新工作流：
+
+```powershell
+git add .github/workflows/release-android.yml pubspec.yaml docs/releasing.md docs/verification.md
+git commit -m "ci: initialize Android SDK before release build"
+git push origin HEAD
+git tag -a v0.1.1 -m "Mamba TV v0.1.1"
+git push origin v0.1.1
+```
+
+直接对旧运行点击 Re-run jobs 仍会使用原标签提交中的旧工作流，无法取得本次修复。保留 `v0.1.0` 的失败记录，不移动标签。只有新运行通过后，才能确认托管 runner 上的完整发布链路。
 
 ## 本机 Release 构建（可选）
 

@@ -2,6 +2,13 @@
 
 本文件区分源码实现、自动化测试、真实目录接口、Android 构建、模拟器和电视实机结果。
 
+## Actions 首次运行 SDK 初始化修复（2026-10-17，Asia/Shanghai）
+
+- 读取 GitHub Run `39042480470` 的真实失败日志：`v0.1.0` / commit `3065fe4` 在 SDK 安装步骤报 `sdkmanager: command not found`（exit 127），尚未执行编译、密钥恢复或发布。此前 Secrets 存在性检查通过，不代表私钥密码或正式签名已经在线验证。
+- 新增固定提交的 `android-actions/setup-android@v4`，显式提供 Command-line Tools 16.0 / SDK 包 / 许可 / PATH / SDK 环境变量，安装后验证 `sdkmanager` 与 `apksigner`。根据该 Action 的输入定义和源码核对版本号、包列表分隔方式及两个 SDK 环境变量的导出。
+- 将应用版本更新为 `0.1.1+2`，新标签为 `v0.1.1`，以使后续运行包含工作流修复，不移动失败的旧标签。修复后的工作流通过 actionlint 检查，内嵌版本校验接受新标签、拒绝旧标签，锁文件未变化。
+- 本次未再次运行设备、业务测试或重建 APK：改动限于 CI SDK 初始化、版本号和文档。此前 51 项业务测试和三个 ABI 的本地 Release 验签结果见下节。本次修复尚未提交 / 推送或在 GitHub runner 上运行，不能宣称完整在线发布已经通过。
+
 ## GitHub Actions Release 配置（2026-10-17，Asia/Shanghai）
 
 - 新增 `v*` 标签触发的 Android Release 工作流，固定 Flutter 3.47.5 / JDK 17，校验标签与应用版本、签名 Secrets，检查后构建三种 ABI 的 APK，验签、计算 SHA256、保存构建附件并通过 GitHub CLI 发布。`-rc.1` 等标签标为 Pre-release。
