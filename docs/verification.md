@@ -2,6 +2,41 @@
 
 本文件区分源码实现、自动化测试、真实目录接口、Android 构建、模拟器和电视实机结果。
 
+## 周历、季度榜单与系列角色资料（2026-10-18，Asia/Shanghai）
+
+- 新增侧栏「新番周历」「新番与榜单」，保留每日放送分组、完整季度日期范围、年份与形式筛选、官方排名、分页与重试；详情增加官方关系标签的系列动画跳转及角色 / 内嵌声优。普通公开资料不需要账号。复用已有 Dio、Freezed、Riverpod、go_router、图片缓存、TV 焦点和 Material 控件，无新增依赖。
+- 全量 Flutter 静态分析无问题，100 项测试通过（本次新增 19 项）。覆盖星期缺失 / 合并 / 跨天保留、季度跨年与独占上界、榜单参数、非动画关系过滤、角色内嵌声优、坏 DTO、异步查询代次与释放、分页去重 / 失败重试 / 原始 offset、局部错误隔离；Widget 覆盖 1280×720、960×540、640×360 的筛选 / 返回保留、年份下拉、方向键及 Select、系列正确路由和声优对话框。修复了「全部年份」选择器的横向溢出。日志：`artifacts/bangumi-discovery-analyze.log`、`artifacts/bangumi-discovery-all-tests.log`。
+- 真实公开接口探针通过：7 个星期分组、108 条放送记录；条目 400602 返回 3 部关联动画、91 个角色、203 条演员关联；2026 第四季度查询总数 145，首批实际 20 条全部在 10 月 1 日至次年 1 月 1 日前；综合榜单首批 24 条，总数 9068。服务端实际每页数量可以少于请求 limit，offset 按实际数量推进。日志：`artifacts/bangumi-discovery-live.log`。
+- 布局截图位于 `artifacts/bangumi-discovery-previews/`，使用固定样例和 Flutter 测试字体，只用于结构与约束检查，不声称设备中文字体、真实海报或 TV 实机表现已验收。Flutter MCP 静态分析无错误；按用户此前限制，未连接运行中的模拟器进行热重载 / 重启，未安装 APK 或操作模拟器界面。
+- 接口、分层、交互和范围见 [bangumi-discovery.md](bangumi-discovery.md)。代码尚未提交、推送或发布 GitHub Release。
+- `0.1.2+3` 三个 ABI 的 Release APK 已重新生成，全部经 apksigner 核验并匹配原有正式签名证书；包含前次弹幕时钟修复。当前产物为 `artifacts/release/mamba-tv-v0.1.2-{armeabi-v7a,arm64-v8a,x86_64}.apk`，字节数依次为 34205826 / 37173556 / 42065919。SHA256 依次为 `3b8fc08cfb38cbbc61911d925bb3f893fdce7f514491252de2cc65a3ec4b47e7` / `a9500f81ca167e6df54e73a149d394446a9d4334a790ef5f7a6d4cbf09478371` / `5b7a713a69087a24d2567c23e2e5ca2a686e37c710d511b1c26af6f18145829b`。构建日志：`artifacts/danmaku-release-build.log`；签名核验日志：`artifacts/bangumi-discovery-release-verification.log`。当前目录中的 SHA256SUMS 和 build-info 已同步更新。
+
+## 弹幕 403 时间戳修复（2026-10-18，Asia/Shanghai）
+
+- 只读检查：电脑 `2026-10-18T12:27:02+08:00`，模拟器 `2026-10-17T06:33:34Z`，约慢 22 小时。同一凭证、同一关联接口分别以模拟器时间 / 电脑时间签名，真实响应分别为 `403 / X-Error-Message: Invalid Timestamp` 与 `200`。凭证有效，故本次失败由设备时钟导致；未修改模拟器设置、安装或重启应用。
+- 原始 HTTPS API 明确拒绝时间戳时，用响应 Date 建立单调服务器时钟，重新签名一次；不从 CDN 校时，不为凭证 / 签名错误重试，不输出鉴权头。无有效 Date 或第二次失败时给出明确时间设置提示。
+- 新增 8 项回归覆盖首次恢复及后续签名、持续拒绝仅重试一次、缺失 / 无效 Date、其他鉴权失败脱敏且不重试、CDN 不得校时。真实 `--clock-skew-test` 将签名时钟设为慢 22 小时，确认恰好一次时间戳拒绝后恢复，取得 58 个节目条目和 7308 条有效弹幕。日志：`artifacts/dandanplay/clock-skew-live-probe.log`。
+- Flutter MCP 对修改文件静态分析无错误；全量静态分析与 81 项测试通过，日志：`artifacts/danmaku-clock-analyze.log` / `artifacts/danmaku-clock-tests.log`。真实接口恢复已验证，当前运行中的模拟器应用仍需用户重新启动至修改后的代码后验证。
+- 已重新构建三个 ABI 的 `0.1.2+3` Release APK，全部通过原有正式签名证书核验。下表保留该次时间戳修复的历史构建记录；当前 `artifacts/release/` 产物以本文件最新一节及目录中的 SHA256SUMS 为准。未提交、推送或发布 GitHub Release。
+
+## 弹弹play 自动弹幕（2026-10-18，Asia/Shanghai）
+
+- 按弹弹play官方接入指南与当前 Swagger v2 核对签名、Bangumi 条目关联、剧集候选及弹幕字段。客户端使用签名模式；APK 通过构建参数取得凭证，源码与日志没有真实密钥。渲染复用 `canvas_danmaku 0.3.3`，签名复用 `crypto 3.0.7`。
+- 播放器在实际视频打开后独立自动匹配 / 加载，失败不改写视频错误状态；仅正常整数集数的唯一明确关联自动选择。歧义季度 / 特别篇 / 标题搜索候选等待确认。切集和关闭取消请求，迟到响应不能覆盖新集，示例视频不请求弹幕。支持保留本集确认、重新匹配和持久化弹幕设置。
+- 通过 `tools/check.ps1`：锁文件校验、静态分析、全部 73 项测试、本地视频源协议探针。新增 22 项覆盖签名固定向量、HTTPS 加速跳转剥离鉴权、鉴权错误、坏数据 / 模式解析 / 去重、自动匹配与歧义、确认持久化和重匹配、缓存取消、时间游标、异步切集 / 关闭隔离、暂停 / 缓冲 / 跳转 / 倍速 / 显隐 / 偏移、鼠标穿透、两个 TV 尺寸的弹幕设置与确认键操作。日志：`artifacts/danmaku-check.log`。
+- 使用用户提供的凭证完成一次真实读取：Bangumi subject 400602 对应弹弹play作品与 58 个节目条目，选择正常第 1 集（episodeId 176170001），经加速服务获取并解析 7308 条有效弹幕。没有发送弹幕或下载视频。日志：`artifacts/dandanplay/live-probe.log`；元数据和官方 OpenAPI 快照也仅保存在被忽略的 artifacts 目录。
+- 已将 `DANDANPLAY_APP_ID` / `DANDANPLAY_APP_SECRET` 配置到 `Brokenheart100/Mamba-tv` 的 Repository secrets，并通过名称及更新时间元数据确认。工作流会临时生成 Dart 编译参数文件，打包后清除。扫描已跟踪及未忽略文件，没有发现真实凭证值。
+- 正式签名 Release `0.1.2+3` 构建成功，三个 APK 均通过 apksigner，且证书指纹与用户原有正式签名证书一致（本轮没有生成新签名密钥）。产物位于 `artifacts/release/`，日志：`artifacts/danmaku-release-build.log` / `danmaku-release-verification.log`。
+
+| APK | 字节 | SHA256 |
+| --- | ---: | --- |
+| mamba-tv-v0.1.2-armeabi-v7a.apk | 33976174 | febdeac5b03dbe6b8ed7bf46a1753ca7aae5c95a3c537498e2b8e035176f2f4d |
+| mamba-tv-v0.1.2-arm64-v8a.apk | 36976672 | 5b99a5a9f7aa2a5c188048b83d52fd24959b7e89f9c409429fd5e6ad2ca6dd50 |
+| mamba-tv-v0.1.2-x86_64.apk | 41869039 | 9f4962ded88c843de4f5305804cf4bb192b0d4e01d4b727ac5fdd402d4130840 |
+
+- 本轮未操作模拟器或电视，未连接运行中的应用进行热重载 / 重启；用户之前的设备操作限制仍适用。Canvas Widget 测试和 APK 构建通过，不能据此宣称真实视频画面合成、低端电视密集弹幕性能已经验收。
+- 代码尚未提交 / 推送，未创建 `v0.1.2` 标签或触发新版本线上发布。GitHub Secrets 配置成功与 GitHub 完整构建 / 发布成功是不同的验证层级。
+
 ## Actions 首次运行 SDK 初始化修复（2026-10-17，Asia/Shanghai）
 
 - 读取 GitHub Run `39042480470` 的真实失败日志：`v0.1.0` / commit `3065fe4` 在 SDK 安装步骤报 `sdkmanager: command not found`（exit 127），尚未执行编译、密钥恢复或发布。此前 Secrets 存在性检查通过，不代表私钥密码或正式签名已经在线验证。

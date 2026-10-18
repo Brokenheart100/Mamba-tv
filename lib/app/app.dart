@@ -11,6 +11,7 @@ import '../presentation/core/tv_shell.dart';
 import '../presentation/features/catalog/home_view.dart';
 import '../presentation/features/catalog/search_view.dart';
 import '../presentation/features/catalog/category_view.dart';
+import '../presentation/features/catalog/discovery_views.dart';
 import '../presentation/features/detail/detail_view.dart';
 import '../presentation/features/library/library_view.dart';
 import '../presentation/features/playback/playback_view.dart';
@@ -90,6 +91,8 @@ class _MambaTvAppState extends State<MambaTvApp> {
               TvShell(location: state.uri.path, child: child),
           routes: [
             GoRoute(path: '/', builder: (_, _) => const HomeView()),
+            GoRoute(path: '/calendar', builder: (_, _) => const CalendarView()),
+            GoRoute(path: '/browse', builder: (_, _) => const BrowseView()),
             GoRoute(
               path: '/categories',
               builder: (_, _) => const CategoryView(),
@@ -151,6 +154,7 @@ class _MambaTvAppState extends State<MambaTvApp> {
     overrides: [
       appDependenciesProvider.overrideWithValue(widget.dependencies),
       talkerProvider.overrideWithValue(_talker),
+      danmakuRepositoryProvider.overrideWithValue(widget.dependencies.danmaku),
     ],
     observers: [stateLogger(_talker)],
     child: MaterialApp.router(

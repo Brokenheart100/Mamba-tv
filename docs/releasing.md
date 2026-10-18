@@ -41,6 +41,8 @@ Android 工具使用现成的 [android-actions/setup-android](https://github.com
 
 ## 发布版本
 
+弹弹play弹幕版本还需要 `DANDANPLAY_APP_ID` 和 `DANDANPLAY_APP_SECRET` 两个 Repository secrets。工作流在编译时读取，不在源码中写入真实值；与上面四个 Android 签名 Secrets 相互独立。当前应用版本是 `0.1.2+3`，新功能发布标签为 `v0.1.2`，弹幕接入与本机启动参数见 [danmaku.md](danmaku.md)。
+
 1. 在 `pubspec.yaml` 设置版本，例如 `version: 0.1.0+1`。标签只使用 `v0.1.0`，不带 `+1`。后续更新请递增 `+` 后的 Android 构建号；CI 校验格式和标签一致性，但不会跨历史版本自动校验或递增构建号。
 2. 提交本次代码，确保包含工作流、Gradle 签名配置、锁文件及生成代码。首次可显式提交本次配置：
 

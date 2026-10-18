@@ -2,7 +2,7 @@ name: mamba_tv
 description: "Mamba Animation Android TV client, using MVVM and Clean Architecture."
 publish_to: 'none'
 
-version: 0.1.1+2
+version: 0.1.2+3
 
 environment:
   sdk: ^3.13.4
@@ -35,6 +35,8 @@ dependencies:
   flutter_inappwebview: 6.2.0-beta.3
   dio_cookie_manager: ^3.5.0
   cookie_jar: ^4.0.9
+  canvas_danmaku: 0.3.3
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

@@ -51,8 +51,10 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
+          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
         run: |
-          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD DANDANPLAY_APP_ID DANDANPLAY_APP_SECRET; do
             if [[ -z "${!name}" ]]; then
               echo "::error::Missing repository secret: $name (see docs/releasing.md)"
               exit 1
@@ -122,10 +124,20 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
+          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
         run: |
           keytool -list -keystore "$ANDROID_KEYSTORE_PATH" -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" > /dev/null
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          path = Path(os.environ['RUNNER_TEMP']) / 'dandanplay-defines.json'
+          path.write_text(json.dumps({key: os.environ[key] for key in ('DANDANPLAY_APP_ID', 'DANDANPLAY_APP_SECRET')}))
+          path.chmod(0o600)
+          PY
           # Flutter must regenerate the Release plugin registrant to omit dev plugins.
-          flutter build apk --release --split-per-abi
+          flutter build apk --release --split-per-abi --dart-define-from-file="$RUNNER_TEMP/dandanplay-defines.json"
           git diff --exit-code -- pubspec.lock
 
       - name: Verify and package APKs
@@ -165,4 +177,4 @@ jobs:
 
       - name: Remove signing keystore
         if: always()
-        run: rm -f -- "$RUNNER_TEMP/mamba-release.jks"
+        run: rm -f -- "$RUNNER_TEMP/mamba-release.jks" "$RUNNER_TEMP/dandanplay-defines.json"

@@ -7,6 +7,7 @@ import '../../../app/providers.dart';
 import '../../../app/logging.dart';
 import '../../../domain/models.dart';
 import '../../../domain/repositories.dart';
+import '../../../domain/danmaku.dart';
 import '../../../domain/use_cases/prepare_playback.dart';
 import '../../core/error_message.dart';
 
@@ -20,6 +21,10 @@ typedef PlaybackState = ({
   String? error,
   double rate,
   Episode? nextEpisode,
+  DanmakuResult danmaku,
+  DanmakuOptions danmakuOptions,
+  bool danmakuLoading,
+  int seekRevision,
 });
 
 class PlaybackViewModel extends Notifier<PlaybackState> {
@@ -36,6 +41,7 @@ class PlaybackViewModel extends Notifier<PlaybackState> {
   late final LibraryRepository _library;
   late final CatalogRepository _catalog;
   late final SettingsRepository _settings;
+  DanmakuRepository? _danmakuRepository;
   Future<void>? _initialization;
   final _sourceResolutionCancelled = Completer<void>();
   @override
@@ -45,6 +51,7 @@ class PlaybackViewModel extends Notifier<PlaybackState> {
     _library = ref.read(libraryRepositoryProvider);
     _catalog = ref.read(catalogRepositoryProvider);
     _settings = ref.read(settingsRepositoryProvider);
+    _danmakuRepository = ref.read(danmakuRepositoryProvider);
     _subscription = engine.snapshots.listen(_onSnapshot);
     ref.onDispose(() {
       unawaited(close());
@@ -76,6 +83,101 @@ class PlaybackViewModel extends Notifier<PlaybackState> {
   bool _completedHandled = false;
   Future<void> _writes = Future.value();
   DateTime _lastSaved = DateTime.fromMillisecondsSinceEpoch(0);
+  DanmakuResult _danmaku = const DanmakuResult();
+  DanmakuOptions _danmakuOptions = const DanmakuOptions();
+  bool _danmakuLoading = false;
+  bool _danmakuOptionsLoaded = false;
+  int _danmakuGeneration = 0;
+  int _seekRevision = 0;
+  Completer<void>? _danmakuCancelled;
+  Future<void> _danmakuWrites = Future.value();
+
+  void _cancelDanmaku() {
+    _danmakuGeneration++;
+    if (_danmakuCancelled case final cancelled? when !cancelled.isCompleted) {
+      cancelled.complete();
+    }
+    _danmakuLoading = false;
+  }
+
+  Future<void> loadDanmaku({
+    DanmakuMatch? selected,
+    bool rematch = false,
+  }) async {
+    final repository = _danmakuRepository;
+    final anime = _anime;
+    final episode = _episode;
+    if (isDemo ||
+        _closing ||
+        repository == null ||
+        anime == null ||
+        episode == null) {
+      return;
+    }
+    _cancelDanmaku();
+    final generation = _danmakuGeneration;
+    final cancelled = _danmakuCancelled = Completer<void>();
+    bool active() =>
+        !_closing && ref.mounted && generation == _danmakuGeneration;
+    _danmakuLoading = true;
+    _danmaku = const DanmakuResult(message: '正在匹配弹幕…');
+    _publish();
+    try {
+      if (!_danmakuOptionsLoaded) {
+        final options = await repository.getOptions();
+        if (!active()) return;
+        _danmakuOptions = options;
+        _danmakuOptionsLoaded = true;
+      }
+      if (!_danmakuOptions.enabled) {
+        _danmaku = const DanmakuResult(message: '弹幕已关闭');
+        return;
+      }
+      final result = await repository.load(
+        anime,
+        episode,
+        selected: selected,
+        rematch: rematch,
+        cancelled: cancelled.future,
+      );
+      if (!active()) return;
+      _danmaku = result;
+      _talker.info('弹幕 · 章节 ${episode.id} · ${result.comments.length} 条');
+    } catch (error, stack) {
+      if (!active()) return;
+      logFailure(_talker, '加载弹幕', error, stack);
+      _danmaku = DanmakuResult(
+        message: error is DanmakuException ? error.message : '弹幕加载失败，可在弹幕设置中重试',
+      );
+    } finally {
+      if (active()) {
+        _danmakuLoading = false;
+        _publish();
+      }
+    }
+  }
+
+  Future<void> updateDanmakuOptions(DanmakuOptions options) async {
+    final wasEnabled = _danmakuOptions.enabled;
+    _danmakuOptions = options;
+    _danmakuOptionsLoaded = true;
+    if (!options.enabled) {
+      _cancelDanmaku();
+      _danmaku = const DanmakuResult(message: '弹幕已关闭');
+    }
+    _publish();
+    // Serialize preferences writes so a slower old value cannot win.
+    _danmakuWrites = _danmakuWrites
+        .then((_) async {
+          await _danmakuRepository?.saveOptions(options);
+        })
+        .catchError((Object error, StackTrace stack) {
+          logFailure(_talker, '保存弹幕设置', error, stack);
+        });
+    if (!wasEnabled && options.enabled) unawaited(loadDanmaku());
+    await _danmakuWrites;
+  }
+
   Episode? get _nextEpisode {
     if (_episode == null) return null;
     final main = _episodes.where((e) => e.type == _episode!.type).toList();
@@ -119,6 +221,9 @@ class PlaybackViewModel extends Notifier<PlaybackState> {
   }
 
   Future<void> _openEpisode() async {
+    _cancelDanmaku();
+    _danmaku = const DanmakuResult();
+    _seekRevision++;
     _ready = false;
     _needsMedia = false;
     _error = null;
@@ -145,6 +250,7 @@ class PlaybackViewModel extends Notifier<PlaybackState> {
       if (_closing) return;
       _ready = true;
       _snapshot = engine.snapshot;
+      unawaited(loadDanmaku());
     } on MissingMediaException {
       _needsMedia = true;
     }
@@ -249,6 +355,8 @@ class PlaybackViewModel extends Notifier<PlaybackState> {
       end,
     );
     await engine.seek(Duration(milliseconds: ms));
+    _seekRevision++;
+    _publish();
   });
   Future<void> cycleRate() => _command(() async {
     const rates = [1.0, 1.25, 1.5, 2.0];
@@ -305,11 +413,13 @@ class PlaybackViewModel extends Notifier<PlaybackState> {
   Future<void> close() => _closeFuture ??= _close();
   Future<void> _close() async {
     _closing = true;
+    _cancelDanmaku();
     if (!_sourceResolutionCancelled.isCompleted) {
       _sourceResolutionCancelled.complete();
     }
     await _subscription.cancel();
     await save();
+    await _danmakuWrites;
     await engine.dispose();
   }
 
@@ -323,6 +433,10 @@ class PlaybackViewModel extends Notifier<PlaybackState> {
     error: _error,
     rate: _rate,
     nextEpisode: _nextEpisode,
+    danmaku: _danmaku,
+    danmakuOptions: _danmakuOptions,
+    danmakuLoading: _danmakuLoading,
+    seekRevision: _seekRevision,
   );
 }
 

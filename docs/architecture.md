@@ -77,4 +77,18 @@ Talker 实例在 main 创建，经 AppDependencies 和 talkerProvider 共享；�
 
 后续可实现其他 SourceRepository 适配器与解析器。不要让 BangumiRepository 返回推测的视频 URL，也不要将某番剧第一集的地址套用到全部章节。
 
-播放引擎可替换为 Kotlin Media3 适配器。字幕轨、音轨、弹幕、下载和账号同步应分别增加领域接口和具体实现；电视硬解、平台合成与解码格式需通过目标设备样片验证。
+播放引擎可替换为 Kotlin Media3 适配器。字幕轨、音轨、下载和账号同步应分别增加领域接口和具体实现；电视硬解、平台合成与解码格式需通过目标设备样片验证。
+
+## Bangumi 发现扩展
+
+Domain 的 `BangumiDiscoveryRepository` 与 Freezed 不可变模型独立于 Flutter / Dio。`RemoteBangumiDiscoveryRepository` 负责星期归组、去重、关系动画类型过滤及角色 / 内嵌演员映射；与原目录仓库共享 Bangumi HTTP 客户端。`CalendarViewModel`、`BrowseViewModel`、`SubjectExtrasViewModel` 均采用 Riverpod Notifier，视图不直接请求服务。
+
+周历切天仅选择已加载的分组；季度查询通过完整日期范围复用搜索，综合榜单使用浏览接口的 rank 排序。分页按原始响应数量推进 offset，显示列表按 ID 去重；筛选代次隔离旧响应，失败保留现有结果供重试。系列作品与角色的加载状态分别维护，局部失败不阻断原详情或选集操作。UI 复用 AnimeCard、图片缓存、TV 焦点和 Material 筛选控件，不新增第三方依赖。具体接口与边界见 [bangumi-discovery.md](bangumi-discovery.md)。
+
+## 自动弹幕
+
+Domain 的 `DanmakuRepository`、不可变模型和时间游标独立于 Flutter / Dio。Data 的 `DandanplayService` 负责官方鉴权、HTTPS 加速跳转与有界内存缓存，`DandanplayRepository` 负责 Bangumi 明确关联 / 唯一集数匹配、候选与本机选择 / 设置持久化。纯标题搜索只提供候选，不能自动确定季度。
+
+App 根作用域注入弹幕仓库。PlaybackViewModel 通过 Riverpod 发布独立的弹幕加载状态，利用取消信号及代次隔离异步响应，不改变视频错误状态；示例会话跳过弹幕。Presentation 的 `DanmakuOverlay` 根据视频时间调度并驱动 `canvas_danmaku` 控制器，绘制 / 轨道 / 防碰撞复用依赖。暂停、缓冲、跳转、倍速和时间偏移由状态同步，不在 Domain 保存 BuildContext / Flutter 控制器。
+
+配置与验证方式见 [danmaku.md](danmaku.md)。

@@ -96,7 +96,7 @@ class SettingsView extends ConsumerWidget {
         ),
         const SizedBox(height: 28),
         const Text(
-          'v0.1.0 · MVVM + Clean Architecture\n支持 Bangumi 目录、Animeko 在线源订阅、本机收藏与历史、视频播放和 Talker 日志。\n在线弹幕、账号同步、离线下载和 BT 尚未实现。',
+          'Mamba TV · MVVM + Clean Architecture\n支持 Bangumi 目录、Animeko 在线源订阅、弹弹play自动弹幕、本机收藏与历史、视频播放和 Talker 日志。\n账号同步、离线下载和 BT 尚未实现。',
           style: TextStyle(fontSize: 12, color: muted),
         ),
       ],

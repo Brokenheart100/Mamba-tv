@@ -3,6 +3,8 @@ import 'package:talker_flutter/talker_flutter.dart';
 
 import '../domain/repositories.dart';
 import '../domain/video_source.dart';
+import '../domain/danmaku.dart';
+import '../domain/bangumi_discovery.dart';
 import 'dependencies.dart';
 import 'logging.dart';
 
@@ -31,3 +33,10 @@ final sourceRepositoryProvider = Provider<SourceRepository>(
 final talkerProvider = Provider<Talker>(
   (ref) => createAppTalker(console: false),
 );
+
+// Optional for isolated player tests and demo hosts; production overrides it.
+final danmakuRepositoryProvider = Provider<DanmakuRepository?>((ref) => null);
+final bangumiDiscoveryRepositoryProvider =
+    Provider<BangumiDiscoveryRepository?>(
+      (ref) => ref.watch(appDependenciesProvider).discovery,
+    );

@@ -13,6 +13,8 @@ import '../../core/media_dialog.dart';
 import '../../core/page_parts.dart';
 import '../../core/tv_focus.dart';
 import 'playback_view_model.dart';
+import 'danmaku_overlay.dart';
+import 'danmaku_panel.dart';
 
 class PlaybackView extends ConsumerStatefulWidget {
   const PlaybackView({super.key, required this.session});
@@ -126,6 +128,17 @@ class _PlaybackViewState extends ConsumerState<PlaybackView>
                   )
                 else
                   const ColoredBox(color: Colors.black),
+                if (!widget.session.isDemo &&
+                    !viewState.loading &&
+                    !viewState.needsMedia &&
+                    problem == null)
+                  DanmakuOverlay(
+                    comments: viewState.danmaku.comments,
+                    snapshot: state,
+                    options: viewState.danmakuOptions,
+                    rate: viewState.rate,
+                    seekRevision: viewState.seekRevision,
+                  ),
                 if (viewState.loading || (state.buffering && problem == null))
                   const Center(child: CircularProgressIndicator()),
                 if (viewState.needsMedia || problem != null)
@@ -293,6 +306,18 @@ class _PlaybackViewState extends ConsumerState<PlaybackView>
                                   ],
                                 ),
                                 const SizedBox(height: 16),
+                                if (!widget.session.isDemo) ...[
+                                  Text(
+                                    '弹弹play · ${viewState.danmakuLoading ? '正在加载弹幕…' : viewState.danmaku.message}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
                                 Wrap(
                                   spacing: 10,
                                   runSpacing: 8,
@@ -322,6 +347,17 @@ class _PlaybackViewState extends ConsumerState<PlaybackView>
                                       icon: Icons.speed,
                                       onPressed: vm.cycleRate,
                                     ),
+                                    if (!widget.session.isDemo)
+                                      TvButton(
+                                        label: '弹幕设置',
+                                        icon: Icons.subtitles_outlined,
+                                        onPressed: () => showDialog<void>(
+                                          context: context,
+                                          builder: (_) => DanmakuPanel(
+                                            session: widget.session,
+                                          ),
+                                        ),
+                                      ),
                                     if (viewState.nextEpisode != null)
                                       TvButton(
                                         label: '下一集',

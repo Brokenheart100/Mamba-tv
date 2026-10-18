@@ -67,6 +67,8 @@ ImagesDto _$ImagesDtoFromJson(Map<String, dynamic> json) =>
       final val = ImagesDto(
         large: $checkedConvert('large', (v) => v as String?),
         common: $checkedConvert('common', (v) => v as String?),
+        medium: $checkedConvert('medium', (v) => v as String?),
+        small: $checkedConvert('small', (v) => v as String?),
       );
       return val;
     });
@@ -74,6 +76,8 @@ ImagesDto _$ImagesDtoFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$ImagesDtoToJson(ImagesDto instance) => <String, dynamic>{
   'large': instance.large,
   'common': instance.common,
+  'medium': instance.medium,
+  'small': instance.small,
 };
 
 RatingDto _$RatingDtoFromJson(Map<String, dynamic> json) =>

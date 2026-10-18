@@ -1,11 +1,97 @@
 import 'package:dio/dio.dart';
 
 import '../../domain/anime_filter.dart';
+import '../../domain/bangumi_discovery.dart';
+import 'bangumi_discovery_dto.dart';
 import 'bangumi_dto.dart';
 
 class BangumiService {
   const BangumiService(this._dio);
   final Dio _dio;
+  Future<List<CalendarDayDto>> calendarDays() async =>
+      ((await _dio.get<List<dynamic>>('/calendar')).data ?? [])
+          .map((row) => CalendarDayDto.fromJson(row as Map<String, dynamic>))
+          .toList();
+
+  Future<List<RelatedAnimeDto>> relations(int id) async =>
+      ((await _dio.get<List<dynamic>>('/v0/subjects/$id/subjects')).data ?? [])
+          .map((row) => RelatedAnimeDto.fromJson(row as Map<String, dynamic>))
+          .toList();
+
+  Future<List<CharacterDto>> characters(int id) async =>
+      ((await _dio.get<List<dynamic>>('/v0/subjects/$id/characters')).data ??
+              [])
+          .map((row) => CharacterDto.fromJson(row as Map<String, dynamic>))
+          .toList();
+
+  Future<({List<AnimeDto> items, int total})> browse(
+    BrowseQuery query,
+    int offset,
+  ) async {
+    final Map<String, dynamic> json;
+    if (query.mode == BrowseMode.ranking) {
+      json = (await _dio.get<Map<String, dynamic>>(
+        '/v0/subjects',
+        queryParameters: {
+          'type': 2,
+          'sort': 'rank',
+          'limit': 24,
+          'offset': offset,
+          if (query.year > 0) 'year': query.year,
+          if (query.format != BrowseFormat.all)
+            'cat': switch (query.format) {
+              BrowseFormat.tv => 1,
+              BrowseFormat.ova => 2,
+              BrowseFormat.movie => 3,
+              BrowseFormat.web => 5,
+              BrowseFormat.all => throw StateError(
+                'All formats have no category',
+              ),
+            },
+        },
+      )).data!;
+    } else {
+      if (query.year < 1900 || query.quarter < 1 || query.quarter > 4) {
+        throw ArgumentError('Invalid season');
+      }
+      final start = DateTime.utc(query.year, (query.quarter - 1) * 3 + 1);
+      final end = DateTime.utc(query.year, query.quarter * 3 + 1);
+      String date(DateTime value) =>
+          '${value.year}-${value.month.toString().padLeft(2, '0')}-01';
+      json = (await _dio.post<Map<String, dynamic>>(
+        '/v0/search/subjects',
+        queryParameters: {'limit': 24, 'offset': offset},
+        data: {
+          'keyword': '',
+          'sort': query.order.name,
+          'filter': {
+            'type': [2],
+            'nsfw': false,
+            'air_date': ['>=${date(start)}', '<${date(end)}'],
+            if (query.format != BrowseFormat.all)
+              'tag': [
+                switch (query.format) {
+                  BrowseFormat.tv => 'TV',
+                  BrowseFormat.movie => '剧场版',
+                  BrowseFormat.ova => 'OVA',
+                  BrowseFormat.web => 'WEB',
+                  BrowseFormat.all => throw StateError(
+                    'All formats have no tag',
+                  ),
+                },
+              ],
+          },
+        },
+      )).data!;
+    }
+    return (
+      items: (json['data'] as List<dynamic>)
+          .map((row) => AnimeDto.fromJson(row as Map<String, dynamic>))
+          .toList(),
+      total: json['total'] as int,
+    );
+  }
+
   Future<List<AnimeDto>> calendar() async {
     final response = await _dio.get<List<dynamic>>('/calendar');
     final seen = <int>{};

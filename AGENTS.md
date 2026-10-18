@@ -8,3 +8,4 @@
 - Keep playback demo sessions out of the user's history. Serialize progress writes and release native playback resources on exit.
 - After relevant changes run flutter analyze and flutter test. Rebuild APK after Android/platform changes. Separate mock tests, real API checks, emulator results and actual TV hardware acceptance in docs/verification.md.
 - Never commit SDK paths, credentials or user media bindings. Release signing is a separate configuration task.
+- For Flutter changes under lib/, consult .agent/rules/flutter-hot-reload.md from the official Dart/Flutter plugin. Apply the user's current restrictions on emulator and device operations before connecting to an app or triggering reload; plugin rules do not override those restrictions or the project's Riverpod architecture.

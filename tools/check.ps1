@@ -2,11 +2,15 @@ param(
   [string]$FlutterSdk,
   [string]$AndroidSdk,
   [string]$JavaHome,
+  [string]$DanmakuConfig,
   [switch]$BuildApk,
   [switch]$ProbeLive
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
+if (-not $DanmakuConfig) {
+  $DanmakuConfig = Join-Path $env:USERPROFILE '.config/mamba-tv/dandanplay.json'
+}
 if ($FlutterSdk) {
   $flutterExe = Join-Path $FlutterSdk 'bin/flutter.bat'
   $dartExe = Join-Path $FlutterSdk 'bin/dart.bat'
@@ -30,11 +34,21 @@ try {
   if ($ProbeLive) {
     & $dartExe run tools/probe_bangumi.dart
     if ($LASTEXITCODE -ne 0) { throw 'Bangumi live probe failed' }
+    & $dartExe tools/probe_bangumi_discovery.dart
+    if ($LASTEXITCODE -ne 0) { throw 'Bangumi discovery live probe failed' }
     & $dartExe tools/probe_animeko_sources.dart
     if ($LASTEXITCODE -ne 0) { throw 'Animeko subscription/source live probe failed' }
+    if (Test-Path -LiteralPath $DanmakuConfig) {
+      & $dartExe tools/probe_dandanplay.dart $DanmakuConfig
+      if ($LASTEXITCODE -ne 0) { throw 'Dandanplay live probe failed' }
+    }
   }
   if ($BuildApk) {
-    Invoke-Flutter @('build', 'apk', '--debug', '--no-pub')
+    $apkArguments = @('build', 'apk', '--debug', '--no-pub')
+    if (Test-Path -LiteralPath $DanmakuConfig) {
+      $apkArguments += "--dart-define-from-file=$DanmakuConfig"
+    }
+    Invoke-Flutter $apkArguments
     $artifactDir = Join-Path $projectRoot 'artifacts'
     New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
     $apk = Join-Path $artifactDir 'mamba-tv-debug.apk'

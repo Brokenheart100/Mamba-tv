@@ -9,6 +9,7 @@ import '../../core/media_dialog.dart';
 import '../../core/page_parts.dart';
 import '../../core/tv_focus.dart';
 import 'detail_view_model.dart';
+import 'subject_extras_view.dart';
 
 class DetailView extends ConsumerWidget {
   const DetailView({super.key, required this.subjectId});
@@ -93,10 +94,17 @@ class DetailView extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                          const SizedBox(height: 28),
-                          const PageHeading('选择章节', '选择数据源绑定对应集数，也可以手动设置视频地址。'),
                         ],
                       ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: SubjectExtrasView(subjectId: subjectId),
+                  ),
+                  const SliverPadding(
+                    padding: EdgeInsets.fromLTRB(34, 28, 34, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: PageHeading('选择章节', '选择数据源绑定对应集数，也可以手动设置视频地址。'),
                     ),
                   ),
                   if (viewState.episodes.isEmpty)

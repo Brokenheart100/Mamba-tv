@@ -67,6 +67,16 @@ class TvShell extends StatelessWidget {
                               for (final item in const [
                                 ('/', '发现', Icons.explore_outlined),
                                 (
+                                  '/calendar',
+                                  '新番周历',
+                                  Icons.calendar_month_outlined,
+                                ),
+                                (
+                                  '/browse',
+                                  '新番与榜单',
+                                  Icons.leaderboard_outlined,
+                                ),
+                                (
                                   '/categories',
                                   '动漫分类',
                                   Icons.grid_view_rounded,

@@ -10,6 +10,23 @@ class AnimeImage extends StatelessWidget {
   final Anime anime;
   final BoxFit fit;
   @override
+  Widget build(BuildContext context) =>
+      CatalogImage(image: anime.image, seed: anime.id, fit: fit);
+}
+
+class CatalogImage extends StatelessWidget {
+  const CatalogImage({
+    super.key,
+    required this.image,
+    required this.seed,
+    this.fit = BoxFit.cover,
+    this.icon = Icons.movie_filter_outlined,
+  });
+  final String image;
+  final int seed;
+  final BoxFit fit;
+  final IconData icon;
+  @override
   Widget build(BuildContext context) {
     final placeholder = DecoratedBox(
       decoration: BoxDecoration(
@@ -17,18 +34,16 @@ class AnimeImage extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF30304D + anime.id % 4 * 0x080200),
+            Color(0xFF30304D + seed % 4 * 0x080200),
             const Color(0xFF181928),
           ],
         ),
       ),
-      child: const Center(
-        child: Icon(Icons.movie_filter_outlined, color: muted, size: 44),
-      ),
+      child: Center(child: Icon(icon, color: muted, size: 44)),
     );
-    if (anime.image.isEmpty) return placeholder;
+    if (image.isEmpty) return placeholder;
     return CachedNetworkImage(
-      imageUrl: anime.image,
+      imageUrl: image,
       fit: fit,
       memCacheWidth: 700,
       placeholder: (_, _) => placeholder,

@@ -68,12 +68,14 @@ class AnimeDto {
 
 @JsonSerializable(checked: true)
 class ImagesDto {
-  const ImagesDto({this.large, this.common});
+  const ImagesDto({this.large, this.common, this.medium, this.small});
   factory ImagesDto.fromJson(Map<String, dynamic> json) =>
       _$ImagesDtoFromJson(json);
   Map<String, dynamic> toJson() => _$ImagesDtoToJson(this);
   final String? large;
   final String? common;
+  final String? medium;
+  final String? small;
 }
 
 @JsonSerializable(checked: true)
